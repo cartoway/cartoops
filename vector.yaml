@@ -1,0 +1,91 @@
+api:
+  enabled: false
+
+sources:
+  docker:
+    type: docker_logs
+    include_containers: [${include_containers}]
+    exclude_containers: [${exclude_containers}]
+
+transforms:
+  json:
+    type: remap
+    inputs: [docker]
+    source: |
+      if is_json(string!(.message)) {
+        . |= object!(parse_json!(.message))
+        del(.message)
+      }
+
+  output:
+    type: remap
+    inputs: [json]
+    source: |
+      del(.source_type)
+      del(.image)
+      del(.host)
+      del(.container_created_at)
+      del(.container_name)
+      del(.label."com_docker.compose.depends_on")
+      del(.label."com_docker.compose.project.config_files")
+      del(.label."com_docker.compose.project.working_dir")
+      del(.label."com.docker.compose.version")
+      del(.label."org.opencontainers.image.created")
+      del(.label."org.opencontainers.image.description")
+      del(.label."org.opencontainers.image.licenses")
+      del(.label."org.opencontainers.image.revision")
+      del(.label."org.opencontainers.image.source")
+      del(.label."org.opencontainers.image.title")
+      del(.label."org.opencontainers.image.url")
+      del(.label."org.opencontainers.image.version")
+      ._timestamp = del(.timestamp)
+
+  output_as_text:
+    type: remap
+    inputs: [output]
+    source: |
+      if .message == null {
+        .message = encode_json(.)
+      }
+
+sinks:
+  openobserve-json:
+    type: http
+    inputs: [output]
+    uri: ${observable_url}
+    method: post
+    auth:
+      strategy: basic
+      user: ${observable_user}
+      password: ${observable_password}
+    encoding:
+      codec: json
+      timestamp_format: unix_us
+    healthcheck:
+      enabled: false
+
+#  openobserve-text:
+#    type: http
+#    inputs: [output]
+#    uri: ${observable_url}
+#    method: post
+#    auth:
+#      strategy: basic
+#      user: ${observable_user}
+#      password: ${observable_password}
+#    encoding:
+#      only_fields: [message]
+#      codec: text
+#      timestamp_format: unix_us
+#    healthcheck:
+#      enabled: false
+
+  file:
+    type: file
+    inputs: [output_as_text]
+    path: /vector/{{ .label."com.docker.compose.project" }}-{{ .label."com.docker.compose.service" }}-%Y-%m-%d.log.gz
+    encoding:
+      only_fields: [message]
+      codec: text
+      charset: UTF-8
+    compression: gzip

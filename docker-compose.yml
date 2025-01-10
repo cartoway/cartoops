@@ -1,0 +1,45 @@
+services:
+  watchtower:
+    image: containrrr/watchtower:1.7.1
+    profiles:
+      - watchtower
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports:
+      - 127.0.0.1:9483:8080
+    command: --rolling-restart --http-api-update ${WATCHTOWER_CONTAINERS}
+    environment:
+      WATCHTOWER_HTTP_API_TOKEN: Mie9buzeiW1cahc4xahZee9AhJ1oawae
+      WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL}
+    restart: unless-stopped
+
+  vector:
+    image: timberio/vector:0.44.0-alpine
+    environment:
+      include_containers: ${vector_include_containers}
+      exclude_containers: ${vector_exclude_containers}
+      observable_url: ${vector_observable_url:-http://openobserve:5080/api/default/default/_json}
+      observable_user: ${vector_observable_user}
+      observable_password: ${vector_observable_password}
+    volumes:
+      - ./vector.yaml:/etc/vector/vector.yaml
+      - /var/run/docker.sock:/var/run/docker.sock  # For accessing Docker logs
+#      - ./lib_vector:/var/lib/vector  # Persistent storage (optional)
+      - ./logs:/vector  # Persistent storage (optional)
+    command: -c /etc/vector/vector.yaml
+    restart: unless-stopped
+
+  openobserve:
+    image: public.ecr.aws/zinclabs/openobserve:v0.14.0
+    profiles:
+      - openobserve
+    environment:
+      ZO_ROOT_USER_EMAIL: ${ZO_ROOT_USER_EMAIL}
+      ZO_ROOT_USER_PASSWORD: ${ZO_ROOT_USER_PASSWORD}
+    ports:
+      - 127.0.0.1:5080:5080
+    volumes:
+      - data_openobserve:/data
+
+volumes:
+  data_openobserve:

@@ -7,7 +7,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       - 127.0.0.1:9483:8080
-    command: --rolling-restart --http-api-update ${WATCHTOWER_CONTAINERS}
+    command: ${WATCHTOWER_OPS} --rolling-restart --http-api-update ${WATCHTOWER_CONTAINERS}
     environment:
       WATCHTOWER_HTTP_API_TOKEN: Mie9buzeiW1cahc4xahZee9AhJ1oawae
       WATCHTOWER_NOTIFICATION_URL: ${WATCHTOWER_NOTIFICATION_URL}

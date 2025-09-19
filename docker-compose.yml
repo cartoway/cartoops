@@ -27,6 +27,13 @@ services:
 #      - ./lib_vector:/var/lib/vector  # Persistent storage (optional)
       - ./logs:/vector  # Persistent storage (optional)
     command: -c /etc/vector/vector.yaml
+    healthcheck:
+      test: wget --no-verbose --tries=1 -O /dev/null http://127.0.0.1:8686/health || exit 1
+      start_interval: 1s
+      start_period: 30s
+      interval: 30s
+      timeout: 10s
+      retries: 5
     restart: unless-stopped
 
   openobserve:
@@ -40,6 +47,7 @@ services:
       - 127.0.0.1:5080:5080
     volumes:
       - data_openobserve:/data
+    restart: unless-stopped
 
 volumes:
   data_openobserve:
